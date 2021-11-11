@@ -3,6 +3,9 @@ import scipy.optimize
 
 
 def income_tax(yearly_salary):
+    """
+    Compute the income tax given yearly salary in kGBP
+    """
     bands = [0, 12.57, 50.27, 150, np.inf]
     percents = [0, 0.2, 0.4, .45]
 
@@ -15,6 +18,9 @@ def income_tax(yearly_salary):
 
 
 def ni_tax(yearly_salary):
+    """
+    Compute ni tax given salary in kGBP
+    """
     weekly_salary = yearly_salary / 365 * 7
     bands = [0, .184, .967, np.inf]
     percents = [0, 0.12, 0.02]
