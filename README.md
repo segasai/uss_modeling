@@ -40,5 +40,8 @@ DB,DC,Lump (18.802511627423236, 0.047417364024311695, 56.407534882269715)
 Currently the numbers come from the the changes that USS plans to adopt from next year.
 The inflation and stock market growth are free parameters of the tool
 
+See the  example of using the tool in the jupyter notebook where I show how the expected 
+annual pension changes as a function of inflation for the old vs new scheme
+
 
 Pull requests,bug fixes are encouraged
