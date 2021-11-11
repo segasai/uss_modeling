@@ -10,8 +10,9 @@ to retirement.
 I.e.
 
 ```
-print ('DB,DC,Lump', utils.future_value(60, 66 - 38, inflation=0.035))
-DB,DC,Lump (21.783824632752452, 925.8102815212872, 65.3514738982574)
+In [110]: print ('DB,DC,Lump', utils.future_value(60, 66 - 38, inflation=0.035,
+     ...: salary_inc=0.04))
+DB,DC,Lump (9.795208128888916, 276.3438314209598, 29.38562438666674)
 ```
 
 Currently the numbers come from the the changes that USS plans to adopt from next year.
