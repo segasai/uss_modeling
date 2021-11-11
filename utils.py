@@ -2,6 +2,47 @@ import numpy as np
 import scipy.optimize
 
 
+class InflationCap:
+    """ Inflation capping """
+    def __init__(self, x1, x2):
+        self.x1 = x1
+        self.x2 = x2
+
+    def __call__(self, x):
+        """ Compute the inflation with the cap
+        use official pension formula
+        """
+        if x < self.x1:
+            return self.x
+        if (x > self.x1) & (x.self < self.x2):
+            return (x - self.x1) * .5 + self.x1
+        if (x > self.x2):
+            return (self.x2 - self.x1) * .5 + self.x1
+
+
+# proposed USS parameters
+USS_NEW_opts = dict(db_cut=40,
+                    empee_contribution_perc1=0.098,
+                    empee_contribution_perc2=0.08,
+                    empyer_contribution_perc1=0.214,
+                    empyer_contribution_perc2=0.12,
+                    db_accr_rate=1. / 85,
+                    lump_frac=3. / 85,
+                    inflation_cap=InflationCap(0.025, 0.025))
+
+# OLD USS parameters
+USS_OLD_opts = dict(db_cut=59.88365,
+                    empee_contribution_perc1=0.096,
+                    empee_contribution_perc2=0.08,
+                    empyer_contribution_perc1=0.214,
+                    empyer_contribution_perc2=0.12,
+                    db_accr_rate=1. / 75,
+                    lump_frac=3. / 75,
+                    inflation_cap=InflationCap(0.5, 0.15))
+
+# inflation cap not quite right because of the
+
+
 def income_tax(yearly_salary):
     """
     Compute the income tax given yearly salary in kGBP
@@ -36,14 +77,15 @@ def ni_tax(yearly_salary):
 
 def uss_salary_decrease(salary,
                         db_cut=40,
-                        contribution_perc1=0.098,
-                        contribution_perc2=0.08):
+                        empee_contribution_perc1=0.098,
+                        empee_contribution_perc2=0.08,
+                        **kwargs):
     """
     How much the salary will decrease due to uss contribution 
     this is pre tax
     """
-    val = min(salary, db_cut) * contribution_perc1 + max(
-        0, salary - db_cut) * contribution_perc2
+    val = min(salary, db_cut) * empee_contribution_perc1 + max(
+        0, salary - db_cut) * empee_contribution_perc2
     return val
 
 
@@ -53,7 +95,7 @@ def uss_benefits(salary,
                  empee_contribution_perc2=0.08,
                  empyer_contribution_perc1=0.214,
                  empyer_contribution_perc2=0.12,
-                 inv_accr_rate=85,
+                 db_accr_rate=1. / 85,
                  lump_frac=3. / 85):
     """
     return current value uss benefits -- tuple of DB/DC/LUMP
@@ -61,7 +103,7 @@ def uss_benefits(salary,
     below_cut = min(salary, db_cut)
     above_cut = max(salary - below_cut, 0)
 
-    db_benefit = 1. / inv_accr_rate * db_cut
+    db_benefit = db_accr_rate * below_cut
     dc_benefit = (empee_contribution_perc2 +
                   empyer_contribution_perc2) * (above_cut)
     lump = lump_frac * below_cut
@@ -132,7 +174,7 @@ def future_value(salary0,
     salary_inc: float
          Fractional Salary increase per year
     stock_market: float
-         Fractional growth of stock market
+         Fractional growth of stock market per year
     inflation_cap: float
          USS cap on inflation (proposed 0.025)
     db_cut0: float
@@ -166,3 +208,10 @@ def future_value(salary0,
         for _ in [accum_db, accum_dc, accum_lump]
     ]
     return accum_db, accum_dc, accum_lump
+
+
+def annuity_rate():
+    # based on USS calculator
+    # How much you have to pay for an annuity (at pension age)
+
+    return 0.025
