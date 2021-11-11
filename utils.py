@@ -121,6 +121,23 @@ def future_value(salary0,
     """
     Return DB, DC value at retirement in todays GBP
 
+    Parameters
+    ----------
+    salary0: float
+         Current yearly salary
+    delta_years: integer
+         How many years before pension
+    inflation: float
+         Fractional inflation i.e. 0.035 for 3.5%
+    salary_inc: float
+         Fractional Salary increase per year
+    stock_market: float
+         Fractional growth of stock market
+    inflation_cap: float
+         USS cap on inflation (proposed 0.025)
+    db_cut0: float
+         Current boundary between DB/DC contribution (i.e. 40)
+    
     """
     db_cut = db_cut0
     accum_db, accum_dc, accum_lump = 0, 0, 0
