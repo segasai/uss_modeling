@@ -1,3 +1,7 @@
+# Unofficial USS modeler
+
+*use at your own risk*
+
 
 The routines to help understand the USS modeling and its value
 as well as proposed changes
