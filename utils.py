@@ -211,7 +211,7 @@ def future_value(salary0,
 
     # recompute now them in today's GBP
     accum_db, accum_dc, accum_lump = [
-        _ / (1 + inflation)**delta_years
+        _ / (1 + inflation)**(delta_years - 1)
         for _ in [accum_db, accum_dc, accum_lump]
     ]
     return accum_db, accum_dc, accum_lump
