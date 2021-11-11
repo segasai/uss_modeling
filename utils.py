@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.optimize
+import copy
 
 
 class InflationCap:
@@ -12,11 +13,11 @@ class InflationCap:
         """ Compute the inflation with the cap
         use official pension formula
         """
-        if x < self.x1:
-            return self.x
-        if (x > self.x1) & (x.self < self.x2):
+        if x <= self.x1:
+            return x
+        elif (x > self.x1) & (x <= self.x2):
             return (x - self.x1) * .5 + self.x1
-        if (x > self.x2):
+        elif (x > self.x2):
             return (self.x2 - self.x1) * .5 + self.x1
 
 
@@ -96,7 +97,8 @@ def uss_benefits(salary,
                  empyer_contribution_perc1=0.214,
                  empyer_contribution_perc2=0.12,
                  db_accr_rate=1. / 85,
-                 lump_frac=3. / 85):
+                 lump_frac=3. / 85,
+                 **kwargs):
     """
     return current value uss benefits -- tuple of DB/DC/LUMP
     """
@@ -158,8 +160,7 @@ def future_value(salary0,
                  inflation=0.035,
                  salary_inc=0.04,
                  stock_market=0.08,
-                 inflation_cap=0.025,
-                 db_cut0=40):
+                 uss_options=USS_OLD_opts):
     """
     Return DB, DC value at retirement in todays GBP
 
@@ -181,26 +182,28 @@ def future_value(salary0,
          Current boundary between DB/DC contribution (i.e. 40)
     
     """
-    db_cut = db_cut0
+    uss_options = copy.copy(uss_options)
+    inflation_cap = uss_options['inflation_cap']
     accum_db, accum_dc, accum_lump = 0, 0, 0
     for year in range(delta_years):
         salary = salary0 * (salary_inc + 1)**year
         # yearly salary increase
 
+        capped_inflation = inflation_cap(inflation)
         # the existing DB and lump is scaled by inflation up to a cap
-        accum_db = (min(inflation, inflation_cap) + 1) * accum_db
-        accum_lump = (min(inflation, inflation_cap) + 1) * accum_lump
+        accum_db = (capped_inflation + 1) * accum_db
+        accum_lump = (capped_inflation + 1) * accum_lump
 
         # DC just grows as stock market
         accum_dc = (1 + stock_market) * accum_dc
         # compute current year benefits they are appended
-        db, dc, lump = uss_benefits(salary, db_cut=db_cut)
+        db, dc, lump = uss_benefits(salary, **uss_options)
         accum_db += db
         accum_dc += dc
         accum_lump += lump
 
         # the threshold for DB/DC is also updated each year
-        db_cut = db_cut * (min(inflation, inflation_cap) + 1)
+        uss_options['db_cut'] = uss_options['db_cut'] * (capped_inflation + 1)
 
     # recompute now them in today's GBP
     accum_db, accum_dc, accum_lump = [
