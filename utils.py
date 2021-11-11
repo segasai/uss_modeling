@@ -116,21 +116,32 @@ def future_value(salary0,
                  inflation=0.035,
                  salary_inc=0.04,
                  stock_market=0.08,
-                 inflation_cap=0.025):
+                 inflation_cap=0.025,
+                 db_cut0=40):
     """
     Return DB, DC value at retirement in todays GBP
 
     """
+    db_cut = db_cut0
     accum_db, accum_dc, accum_lump = 0, 0, 0
     for year in range(delta_years):
         salary = salary0 * (salary_inc + 1)**year
+        # yearly salary increase
+
+        # the existing DB and lump is scaled by inflation up to a cap
         accum_db = (min(inflation, inflation_cap) + 1) * accum_db
-        accum_dc = accum_dc * (1 + stock_market)
         accum_lump = (min(inflation, inflation_cap) + 1) * accum_lump
-        db, dc, lump = uss_benefits(salary)
+
+        # DC just grows as stock market
+        accum_dc = (1 + stock_market) * accum_dc
+        # compute current year benefits they are appended
+        db, dc, lump = uss_benefits(salary, db_cut=db_cut)
         accum_db += db
         accum_dc += dc
         accum_lump += lump
+
+        # the threshold for DB/DC is also updated each year
+        db_cut = db_cut * (min(inflation, inflation_cap) + 1)
 
     # recompute now them in today's GBP
     accum_db, accum_dc, accum_lump = [
