@@ -11,13 +11,17 @@ class InflationCap:
 
     def __call__(self, x):
         """ Compute the inflation with the cap
-        use official pension formula
+        use official pension formula where there are two thresholds
         """
         if x <= self.x1:
+            # small inflation we don't cap
             return x
         elif (x > self.x1) & (x <= self.x2):
+            # medium inflation we take 50% from the value above the first cap
             return (x - self.x1) * .5 + self.x1
         elif (x > self.x2):
+            # large inflation we keep the inflation fixed to the value
+            # from previous interval
             return (self.x2 - self.x1) * .5 + self.x1
 
 
@@ -39,7 +43,7 @@ USS_OLD_opts = dict(db_cut=59.88365,
                     empyer_contribution_perc2=0.12,
                     db_accr_rate=1. / 75,
                     lump_frac=3. / 75,
-                    inflation_cap=InflationCap(0.5, 0.15))
+                    inflation_cap=InflationCap(0.05, 0.15))
 
 # inflation cap not quite right because of the
 
