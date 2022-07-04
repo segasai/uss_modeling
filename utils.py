@@ -29,9 +29,9 @@ class InflationCap:
 # proposed USS parameters
 USS_NEW_opts = dict(db_cut=40,
                     empee_contribution_perc1=0.098,
-                    empee_contribution_perc2=0.08,
-                    empyer_contribution_perc1=0.214,
-                    empyer_contribution_perc2=0.12,
+                    empee_contribution_perc2=0.098,
+                    empyer_contribution_perc1=0.216,
+                    empyer_contribution_perc2=0.216,
                     db_accr_rate=1. / 85,
                     lump_frac=3. / 85,
                     inflation_cap=InflationCap(0.025, 0.025))
@@ -84,7 +84,7 @@ def ni_tax(yearly_salary):
 def uss_salary_decrease(salary,
                         db_cut=40,
                         empee_contribution_perc1=0.098,
-                        empee_contribution_perc2=0.08,
+                        empee_contribution_perc2=0.098,
                         **kwargs):
     """
     How much the salary will decrease due to uss contribution 
@@ -98,9 +98,10 @@ def uss_salary_decrease(salary,
 def uss_benefits(salary,
                  db_cut=40,
                  empee_contribution_perc1=0.098,
-                 empee_contribution_perc2=0.08,
-                 empyer_contribution_perc1=0.214,
-                 empyer_contribution_perc2=0.12,
+                 empee_contribution_perc2=0.098,
+                 empyer_contribution_perc1=0.216,
+                 empyer_contribution_perc2=0.216,
+                 dc_fraction=0.2,
                  db_accr_rate=1. / 85,
                  lump_frac=3. / 85,
                  **kwargs):
@@ -111,30 +112,37 @@ def uss_benefits(salary,
     above_cut = max(salary - below_cut, 0)
 
     db_benefit = db_accr_rate * below_cut
-    dc_benefit = (empee_contribution_perc2 +
-                  empyer_contribution_perc2) * (above_cut)
+    dc_benefit = dc_fraction * (above_cut)
     lump = lump_frac * below_cut
     return db_benefit, dc_benefit, lump
 
 
-def sipp_tax_relief(salary):
-    """ maximum tax relief for the sipp """
-
+def sipp_tax_relief(salary, amount):
+    """ tax relief for the sipp """
+    max_sipp = 40
+    if amount > max_sipp:
+        raise Exception('oops')
     bands = [0, 12.57, 50.27, 150, np.inf]
-    amounts = []
+    tax_rates = [0, 0.2, 0.4, 0.45, 0.45]
+    sal_amounts = []
     for i in range(len(bands) - 1):
         if salary > bands[i]:
-            amounts.append(min(salary, bands[i + 1]) - bands[i])
+            sal_amounts.append(min(salary, bands[i + 1]) - bands[i])
         else:
-            amounts.append(0)
-    reliefs = [0, 0.2, 0.4, 0.45]
-    max_relief = 0
-    for a, r in zip(amounts, reliefs):
-        max_relief += a * r
-    return max_relief
+            sal_amounts.append(0)
+    base_rate = 0.2
+    start_relief = base_rate * amount
+    extra_relief = 0
+    for i in range(len(bands) - 1):
+        if i <= 1:
+            continue
+        else:
+            extra_relief += (tax_rates[i] - base_rate) * sal_amounts[i]
+    # https://www.hl.co.uk/pensions/tax-relief/calculator
+    return start_relief + extra_relief
 
 
-def take_home(salary):
+def take_home(salary, add_employer=True):
     """
     Return take home salary with USS,
     pair of (DB, DC) values,
@@ -146,15 +154,20 @@ def take_home(salary):
     ni_tax_val = ni_tax(salary - uss_pens)
     inc_tax_val0 = income_tax(salary)
     ni_tax_val0 = ni_tax(salary)
-    # 1 / 0
-    max_relief = sipp_tax_relief(salary)
+    take1 = salary - uss_pens - inc_tax_val - ni_tax_val
+    uss_employer_contribution = 0.216
+    if add_employer:
+        uss_employer_pay = salary * uss_employer_contribution
+    else:
+        uss_employer_pay = 0
 
     def func_find_pens(x):
-        take1 = salary - uss_pens - inc_tax_val - ni_tax_val
-        take2 = salary - x - inc_tax_val0 - ni_tax_val0 + max_relief
+        take2 = (salary + uss_employer_pay - inc_tax_val0 - ni_tax_val0 - x +
+                 sipp_tax_relief(salary + uss_employer_pay, x))
         return take1 - take2
 
-    ret = scipy.optimize.bisect(func_find_pens, 0, salary)
+    max_sipp = 40
+    ret = scipy.optimize.bisect(func_find_pens, 0, max_sipp)
     sipp_dc = ret
     uss_ben = uss_benefits(salary)
     return salary - uss_pens - inc_tax_val - ni_tax_val, uss_ben, sipp_dc
