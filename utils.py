@@ -5,6 +5,7 @@ import copy
 
 class InflationCap:
     """ Inflation capping """
+
     def __init__(self, x1, x2):
         self.x1 = x1
         self.x2 = x2
@@ -126,7 +127,7 @@ def sipp_tax_relief(salary):
             amounts.append(min(salary, bands[i + 1]) - bands[i])
         else:
             amounts.append(0)
-    reliefs = [0, 0, 0.2, 0.25]
+    reliefs = [0, 0.2, 0.4, 0.45]
     max_relief = 0
     for a, r in zip(amounts, reliefs):
         max_relief += a * r
@@ -157,6 +158,30 @@ def take_home(salary):
     sipp_dc = ret
     uss_ben = uss_benefits(salary)
     return salary - uss_pens - inc_tax_val - ni_tax_val, uss_ben, sipp_dc
+
+
+def sipp_equivalent(salary, uss_options=None):
+    """
+    how much money you'll have in sipp
+    in order to have the same take home money
+    that also includes the tax relief
+    """
+    uss_pens = uss_salary_decrease(salary, **uss_options)
+    inc_tax_val = income_tax(salary - uss_pens)
+    ni_tax_val = ni_tax(salary - uss_pens)
+    inc_tax_val0 = income_tax(salary)
+    ni_tax_val0 = ni_tax(salary)
+    # 1 / 0
+    max_relief = sipp_tax_relief(salary)
+    print(max_relief)
+
+    def func_find_pens(x):
+        take1 = salary - uss_pens - inc_tax_val - ni_tax_val
+        take2 = salary - x - inc_tax_val0 - ni_tax_val0 + max_relief
+        return take1 - take2
+
+    ret = scipy.optimize.bisect(func_find_pens, 0, salary)
+    return ret
 
 
 def future_value(salary0,
@@ -205,6 +230,59 @@ def future_value(salary0,
         accum_db += db
         accum_dc += dc
         accum_lump += lump
+
+        # the threshold for DB/DC is also updated each year
+        uss_options['db_cut'] = uss_options['db_cut'] * (capped_inflation + 1)
+
+    # recompute now them in today's GBP
+    accum_db, accum_dc, accum_lump = [
+        _ / (1 + inflation)**(delta_years - 1)
+        for _ in [accum_db, accum_dc, accum_lump]
+    ]
+    return accum_db, accum_dc, accum_lump
+
+
+def future_value_sipp(salary0,
+                      delta_years,
+                      inflation=0.035,
+                      salary_inc=0.04,
+                      stock_market=0.08,
+                      uss_options=USS_OLD_opts):
+    """
+    Return DB, DC value at retirement in todays GBP
+
+    Parameters
+    ----------
+    salary0: float
+         Current yearly salary
+    delta_years: integer
+         How many years before pension
+    inflation: float
+         Fractional inflation i.e. 0.035 for 3.5%
+    salary_inc: float
+         Fractional Salary increase per year
+    stock_market: float
+         Fractional growth of stock market per year
+    inflation_cap: float
+         USS cap on inflation (proposed 0.025)
+    db_cut0: float
+         Current boundary between DB/DC contribution (i.e. 40)
+    
+    """
+    uss_options = copy.copy(uss_options)
+    inflation_cap = uss_options['inflation_cap']
+    accum_db, accum_dc, accum_lump = 0, 0, 0
+    for year in range(delta_years):
+        salary = salary0 * (salary_inc + 1)**year
+
+        # DC just grows as stock market
+        accum_dc = (1 + stock_market) * accum_dc
+        capped_inflation = inflation_cap(inflation)
+        # compute current year benefits they are appended
+        uss_expense = uss_salary_decrease(salary, *uss_options)
+
+        db, dc, lump = uss_benefits(salary, **uss_options)
+        accum_dc += dc
 
         # the threshold for DB/DC is also updated each year
         uss_options['db_cut'] = uss_options['db_cut'] * (capped_inflation + 1)
